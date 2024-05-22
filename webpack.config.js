@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/index.js',
+  entry: './src/index.ts',
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
@@ -10,17 +10,16 @@ module.exports = {
     globalObject: 'this'
   },
   mode: 'production',
+  devtool: 'source-map',
+  resolve: {
+    extensions: ['.ts', '.js'] // TypeScript ve JavaScript dosyalarını çözümlemek için
+  },
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.ts$/,
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env']
-          }
-        }
+        use: 'ts-loader' // TypeScript dosyalarını işlemek için ts-loader kullanın
       }
     ]
   }
