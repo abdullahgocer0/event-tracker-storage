@@ -1,0 +1,75 @@
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.menu-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(209, 193, 193, 0.1);
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.menu-button:hover {
+    width: 70px;
+    height: 70px;
+}
+
+.menu-content {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.menu-hidden {
+    right: -120px; /* Menü yarısı gizlenecek şekilde */
+}
+
+.menu-button-hidden {
+    right: -30px; /* Menü butonu yarısı gizlenecek şekilde */
+}
+
+.start-stop-button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+}
+button:focus, button:focus-visible {
+     outline: none !important;
+}
+
+
+.sessionId-label {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    font-family: sans-serif;
+}

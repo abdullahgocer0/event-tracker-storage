@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Tracker</title>
+    <title>Event Tracker Usage</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
 </head>
 <body>
-    <h1>Event Tracker</h1>
-    <div id="controls">
-        <button id="startListening">Start Listening</button>
-        <button id="stopListening">Stop Listening</button>
-    </div>
-    <script src="./src/index.js" type="module"></script>
+    <h1>Event Tracker Usage Example</h1>
+    <button id="startListening">Start Listening</button>
+    <button id="stopListening">Stop Listening</button>
+    <script src="./dist/bundle.js"></script> <!-- bundle.js dosyasının doğru yolunu belirtin -->
+    <script>
+        document.getElementById('startListening').addEventListener('click', async () => {
+            await setListeningParameter(true);
+            initializeListeners();
+        });
+
+        document.getElementById('stopListening').addEventListener('click', async () => {
+            await setListeningParameter(false);
+            initializeListeners();
+        });
+    </script>
 </body>
 </html>

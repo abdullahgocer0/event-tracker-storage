@@ -1,6 +1,21 @@
-import { db, addDoc, collection, doc, setDoc, getDoc } from './firebase';
+const axios = require('axios');
+import { response } from 'express';
+import './styles.css'; // CSS dosyasını içe aktarın
+function loadFontAwesome() {
+    const link = document.createElement('link');
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+}
+var sessionId: string;
 
-export function generateSessionId(): string {
+// Session ID oluşturma ve saklama
+function initializeSessionId() {
+    sessionId = generateSessionId();
+    console.log('Session ID created:', sessionId);
+}
+
+export function generateSessionId() {
     return 'session-' + Math.random().toString(36).substr(2, 9);
 }
 
@@ -8,24 +23,31 @@ export function generateEventSentence(event: Event): string {
     const eventType = event.type;
     const elementType = (event.target as HTMLElement).tagName.toLowerCase();
     const elementId = (event.target as HTMLElement).id ? ` with id '${(event.target as HTMLElement).id}'` : '';
-    const elementValue = (event.target as HTMLInputElement).value ? ` and value '${(event.target as HTMLInputElement).value}'` : '';
+    const elementValue = (event.target as HTMLInputElement).value ? ` and value '${(event.target as HTMLInputElement).value}'` :  (event.target as HTMLInputElement).innerText || '';
     const elementClass = (event.target as HTMLElement).className ? ` and class '${(event.target as HTMLElement).className}'` : '';
     const mouseCoordinates = eventType.startsWith('mouse') ? ` at (${(event as MouseEvent).clientX}, ${(event as MouseEvent).clientY})` : '';
-
-    return `User triggered ${eventType} on ${elementType}${elementId}${elementClass}${elementValue}${mouseCoordinates}.`;
+    const xpath=getXPath(event.target as HTMLElement)
+    
+    return `User triggered ${eventType} on ${elementType}${xpath}${elementValue}${mouseCoordinates}.`;
 }
 
 export function generateEventDescription(event: Event) {
     const eventType = event.type;
     const elementType = (event.target as HTMLElement).tagName.toLowerCase();
     const elementId = (event.target as HTMLElement).id || null;
-    const elementValue = (event.target as HTMLInputElement).value || null;
+    const elementValue = (event.target as HTMLInputElement).value || (event.target as HTMLInputElement).innerText || null;
     const elementClass = (event.target as HTMLElement).className || null;
     const timestamp = new Date().toISOString();
-    const url = window.location.href;
-    const xpath = getXPath(event.target as HTMLElement);
+    const url = window.location.host;
+    const pathX = getXPath(event.target as HTMLElement);
     const mouseCoordinates = eventType.startsWith('mouse') ? { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY } : null;
-    const sentence = generateEventSentence(event);
+    const scenarioText = generateEventSentence(event);
+    const user="merve";
+    const projectId="KLH";
+
+    console.log(scenarioText); // For demonstration purposes
+
+	
 
     return {
         eventType,
@@ -35,9 +57,12 @@ export function generateEventDescription(event: Event) {
         elementValue,
         elementClass,
         url,
-        xpath,
-        mouseCoordinates,
-        sentence
+        pathX,
+      //  mouseCoordinates,
+         scenarioText,
+        user,
+        sessionId,
+        projectId
     };
 }
 
@@ -65,19 +90,39 @@ export function getXPath(element: HTMLElement): string | null {
     return null;
 }
 
-const sessionId = generateSessionId();
-
 async function handleEvent(event: Event) {
-    const description = generateEventDescription(event);
-    try {
-        await addDoc(collection(db, 'eventLogs'), {
-            sessionId,
-            ...description
-        });
-        console.log('Event logged:', description);
-    } catch (e) {
-        console.error('Error adding document: ', e);
+    const target=event.currentTarget as HTMLElement;
+    if(target.id == document.querySelector('#menuButton')?.id ){
+    return;
     }
+    const description = generateEventDescription(event);
+    let url ='';
+    if (window.location.href.includes('test')) {
+        url = 'https://neotest-701e1c076af2.herokuapp.com/api/test/create';
+    } else {
+        url = 'https://neotest-701e1c076af2.herokuapp.com/api/prod/create';
+    }
+
+    await apiCall(url, description);
+
+   
+}
+
+async function apiCall(url: string, body: object) {
+    try {
+        const response = await axios.post(url, body, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Event sent to API successfully:', body);
+        return response;
+    } catch (error) {
+        console.error('Error sending event to API:', error);
+    }
+    return null;
+
+   
 }
 
 export function attachGlobalListeners() {
@@ -86,14 +131,23 @@ export function attachGlobalListeners() {
         element.addEventListener('blur', handleEvent);
     });
 
-    // Click olayını button elemanlarına ekleyin
+    // Click olayını button ve select elemanlarına ekleyin
     document.querySelectorAll('button').forEach(element => {
-        element.addEventListener('click', handleEvent);
+        if(element.id!==document.querySelector('#menuButton')?.id && element.id!==document.querySelector('#startStopButton')?.id ){
+            element.addEventListener('click', handleEvent);
+        }
     });
 
-    // Change olayını checkbox ve select elemanlarına ekleyin
-    document.querySelectorAll('input[type="checkbox"], input[type="radio"], select').forEach(element => {
+    // Change olayını checkbox ve radio elemanlarına ekleyin
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"],select').forEach(element => {
         element.addEventListener('change', handleEvent);
+    });
+    document.querySelectorAll('[role="combobox"][aria-haspopup="listbox"]').forEach(element => {
+        element.addEventListener('change', handleEvent);
+    });
+       // Material-UI Select elemanları için change olayını ekleyin
+       document.querySelectorAll('.MuiSelect-select, .MuiMenuItem-root').forEach(element => {
+        element.addEventListener('click', handleEvent); // Click olayını kullanıyoruz çünkü MenuItem click olayı tetikler
     });
 }
 
@@ -103,48 +157,242 @@ export function detachGlobalListeners() {
         element.removeEventListener('blur', handleEvent);
     });
 
-    // Click olayını button elemanlarından kaldırın
+    // Click olayını button ve select elemanlarından kaldırın
     document.querySelectorAll('button').forEach(element => {
         element.removeEventListener('click', handleEvent);
     });
 
-    // Change olayını checkbox ve select elemanlarından kaldırın
-    document.querySelectorAll('input[type="checkbox"], input[type="radio"], select').forEach(element => {
+    // Change olayını checkbox ve radio elemanlarından kaldırın
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"],select').forEach(element => {
         element.removeEventListener('change', handleEvent);
     });
+    document.querySelectorAll('[role="combobox"][aria-haspopup="listbox"]').forEach(element => {
+        element.removeEventListener('change', handleEvent);
+    });
+         // Material-UI Select elemanları için change olayını ekleyin
+         document.querySelectorAll('.MuiSelect-select, .MuiMenuItem-root').forEach(element => {
+            element.removeEventListener('click', handleEvent); // Click olayını kullanıyoruz çünkü MenuItem click olayı tetikler
+        });
 }
 
-export async function fetchListeningParameter() {
-    const docRef = doc(db, 'settings/listeningParameter'); // Belge yolunu düzeltin
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        return docSnap.data().shouldListen;
-    } else {
-        return false;
+// Uyarı mesajını oluşturma fonksiyonu
+export function showNotification(message: string, onYes: () => void, onNo: () => void) {
+    // Eğer uyarı mesajı daha önce oluşturulmamışsa, oluşturun
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        container.innerHTML = `
+            <div id="notification-text"></div>
+            <div id="notification-buttons">
+                <button class="notification-button yes">Evet</button>
+                <button class="notification-button no">Hayır</button>
+            </div>
+        `;
+        document.body.appendChild(container);
+
+        container.querySelector('.yes')?.addEventListener('click', () => {
+            onYes();
+            hideNotification();
+
+            const menuButton = document.getElementById('menuButton');
+            if (menuButton) {
+                menuButton.style.display = 'block';
+            }
+        });
+
+        container.querySelector('.no')?.addEventListener('click', () => {
+            onNo();
+            hideNotification();
+        });
+    }
+
+    // Mesajı ve butonları güncelleyin
+    container.querySelector('#notification-text')!.textContent = message;
+
+    // Uyarı mesajını gösterin
+    container.classList.add('show');
+}
+
+export function showNotification2() {
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.id = 'notification';
+
+    const message = document.createElement('p');
+    message.innerText = 'Do you want to continue?';
+    notification.appendChild(message);
+
+    const yesButton = document.createElement('button');
+    yesButton.id = 'yesButton';
+    yesButton.innerText = 'Yes';
+    notification.appendChild(yesButton);
+
+    const noButton = document.createElement('button');
+    noButton.id = 'noButton';
+    noButton.innerText = 'No';
+    notification.appendChild(noButton);
+
+    document.body.appendChild(notification);
+
+    noButton.addEventListener('click', () => {
+        notification.style.display = 'none';
+        const menuButton = document.getElementById('menuButton');
+        if (menuButton) {
+            menuButton.style.display = 'block';
+        }
+    });
+
+    yesButton.addEventListener('click', () => {
+        alert('Yes button clicked!');
+        notification.remove();
+    });
+}
+// Uyarı mesajını gizleme fonksiyonu
+function hideNotification() {
+    const container = document.getElementById('notification-container');
+    if (container) {
+        container.classList.remove('show');
+        setTimeout(() => {
+            container!.style.display = 'none';
+        }, 300); // Animasyonun bitmesini bekleyin
     }
 }
+export async function fetchListeningParameter(origin:string) {
+   const response= await apiCall('https://neotest-701e1c076af2.herokuapp.com/api/count/check/scenario-open', {
+        "url": origin
+    })
+    if(response==null){
+        alert(origin + ' bulunamadı ')
+    }
+    return response.data.isOpen;
+}
 
-export async function setListeningParameter(value: boolean) {
-    const docRef = doc(db, 'settings/listeningParameter'); // Belge yolunu düzeltin
-    await setDoc(docRef, { shouldListen: value });
+export async function setListeningParameter(postUrl:string,origin:string) {
+    //url finish/scenario ise parameteti kapatır
+    //url start/scenario ise parameteti açar
+    const response= await apiCall(postUrl, {
+        "url": origin
+    })
+    return response.data.isOpen;
+}
+window.addEventListener('beforeunload', storeEventDescriptions);
+function storeEventDescriptions() {
+    setListeningParameter('https://neotest-701e1c076af2.herokuapp.com/api/count/finish/scenario',window.location.href);
 }
 
 export async function initializeListeners() {
-    const shouldListen = await fetchListeningParameter();
+
+     // Uyarı mesajını göster
+     showNotification('Test ortamındasın! Dinleme başlatılsın mı? Session-Id : '+ sessionId ,async () => {
+      
+       await setListeningParameter('https://neotest-701e1c076af2.herokuapp.com/api/count/start/scenario',window.location.href);
+       await paramListener(); 
+
+    }, () => {
+        setListeningParameter('https://neotest-701e1c076af2.herokuapp.com/api/count/finish/scenario',window.location.href);
+    });
+}
+
+async function paramListener() {
+    const shouldListen = await fetchListeningParameter(window.location.href);
     if (shouldListen) {
         attachGlobalListeners();
     } else {
         detachGlobalListeners();
     }
+
+    //Dinleme parametresi değiştiğinde güncellemek için interval 
+    // setInterval(async () => {
+    //     const shouldListen = await fetchListeningParameter(window.location.href);
+    //     if (shouldListen) {
+    //         attachGlobalListeners();
+    //     } else {
+    //         detachGlobalListeners();
+    //     }
+    // }, 5000);
 }
 
-initializeListeners();
+export function initializeMenu() {
+    const menuButton = document.createElement('button');
+    menuButton.className = 'menu-button';
+    menuButton.id = 'menuButton';
+    menuButton.innerHTML = '☰';
+    menuButton.style.display = 'block'; // Başlangıçta görünsün
+    document.body.appendChild(menuButton);
 
-// Lazy load firebase
-document.addEventListener('DOMContentLoaded', () => {
-    import('./firebase').then(module => {
-        console.log('Firebase module loaded', module);
-    }).catch(err => {
-        console.error('Failed to load firebase module', err);
+    const menuContent = document.createElement('div');
+    menuContent.className = 'menu-content';
+    menuContent.id = 'menuContent';
+
+    //sessiontext eklendi
+    const sessionLabel = document.createElement('div');
+    sessionLabel.id = 'sessionIdLabel';
+    sessionLabel.className = 'sessionId-label';
+    sessionLabel.innerHTML = 'Session ID: ' + sessionId;
+    menuContent.appendChild(sessionLabel);
+    //buton eklendi
+    const startStopButton = document.createElement('button');
+    startStopButton.id = 'startStopButton';
+    startStopButton.className = 'start-stop-button';
+    startStopButton.style.backgroundColor='green';
+    startStopButton.innerHTML = '<i class="fas fa-play"></i><span style="margin-left:10px;"> Start</span>';
+    menuContent.appendChild(startStopButton);
+
+    document.body.appendChild(menuContent);
+
+    menuButton.addEventListener('click', () => {
+        if (menuContent.style.display === 'block') {
+            menuContent.style.display = 'none';
+            menuContent.classList.add('menu-hidden');
+            menuButton.classList.add('menu-button-hidden');
+        } else {
+            menuContent.style.display = 'block';
+            menuContent.classList.remove('menu-hidden');
+            menuButton.classList.remove('menu-button-hidden');
+
+
+        }
     });
+    menuButton.addEventListener('mouseenter', () => {
+        if (menuContent.style.display === 'none') {
+            menuContent.classList.remove('menu-hidden');
+            menuButton.classList.remove('menu-button-hidden');
+
+        }
+    });
+
+    menuButton.addEventListener('mouseleave', () => {
+        if (menuContent.style.display === 'none') {
+            menuContent.classList.add('menu-hidden');
+            menuButton.classList.add('menu-button-hidden');
+
+        }
+    });
+
+
+
+    startStopButton.addEventListener('click',async() => {
+        if (startStopButton.innerHTML.includes('Start')) {
+            await setListeningParameter('https://neotest-701e1c076af2.herokuapp.com/api/count/start/scenario',window.location.href);
+            await paramListener(); 
+            startStopButton.style.backgroundColor='red';
+            startStopButton.innerHTML = '<i class="fas fa-stop"></i><span style="margin-left:10px;"> Stop</span>';
+        } else {
+            await setListeningParameter('https://neotest-701e1c076af2.herokuapp.com/api/count/finish/scenario',window.location.href);
+            await paramListener(); 
+            startStopButton.style.backgroundColor='green';
+            startStopButton.innerHTML = '<i class="fas fa-play"></i><span style="margin-left:10px;"> Start</span>';
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeMenu();
+    loadFontAwesome();
+
+    //showNotification2();
 });
+
+initializeSessionId();
+//initializeListeners();
